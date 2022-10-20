@@ -81,7 +81,7 @@ class Device{
     STM32* stm;
     unsigned long long nextBroadcast = 0;
     byte nextBroadcastItm = 0;
-    byte nextDataRefresh = 0;
+    unsigned long long nextDataRefresh = 0;
     long broadcastDelay = 10000;
     long refreshDelay = 10000;
     byte totalItems = 1;
@@ -101,14 +101,14 @@ class Device{
     void loop(){
       if(millis()>this->nextDataRefresh){
         refreshData();
-        this->nextDataRefresh = millis() + refreshDelay;
+        this->nextDataRefresh = millis() + this->refreshDelay;
       };
       if(millis()>this->nextBroadcast){
         if(isItemValidBcast(nextBroadcastItm))
           broadcastItemState(nextBroadcastItm);
         this->nextBroadcast = millis() + broadcastDelay;
         do{
-          #ifdef DEBUG_1
+          #ifdef DEBUG_11
             char tmp[30];
             sprintf(tmp, "Do While: %d", this->nextBroadcastItm );
             Serial.println(tmp);

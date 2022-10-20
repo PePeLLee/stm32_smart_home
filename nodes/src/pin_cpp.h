@@ -72,7 +72,7 @@ void GPIO_Pins::canCommand(Can_message::message* msg){
       delay(10);
     #endif
     pins[msg->pin].lastVal = newVal;
-    if(msg->type == Can_message::ValType::T_PWM){
+    if(msg->valType == Can_message::ValType::T_PWM){
         #ifdef DEBUG_1  
           Serial.println("....................Analog................");
         #endif

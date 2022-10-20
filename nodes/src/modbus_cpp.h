@@ -23,6 +23,32 @@ Modbus::Modbus(STM32* stm):Device(stm){
   this->addresses[this->totalItems++].multiplier = 10;
   this->addresses[this->totalItems].addr = 0x12;
   this->addresses[this->totalItems++].multiplier = 10;
+
+  this->addresses[this->totalItems].addr = 22;
+  this->addresses[this->totalItems++].multiplier = 10;
+  this->addresses[this->totalItems].addr = 24;
+  this->addresses[this->totalItems++].multiplier = 10;
+  this->addresses[this->totalItems].addr = 26;
+  this->addresses[this->totalItems++].multiplier = 10;
+
+  this->addresses[this->totalItems].addr = 0x100;
+  this->addresses[this->totalItems++].multiplier = 10;
+  this->addresses[this->totalItems].addr = 0x102;
+  this->addresses[this->totalItems++].multiplier = 10;
+  this->addresses[this->totalItems].addr = 0x104;
+  this->addresses[this->totalItems++].multiplier = 10;
+  this->addresses[this->totalItems].addr = 0x106;
+  this->addresses[this->totalItems++].multiplier = 10;
+
+  this->addresses[this->totalItems].addr = 0x1C;
+  this->addresses[this->totalItems++].multiplier = 100;
+  this->addresses[this->totalItems].addr = 0x1E;
+  this->addresses[this->totalItems++].multiplier = 100;
+  this->addresses[this->totalItems].addr = 0x20;
+  this->addresses[this->totalItems++].multiplier = 100;
+  this->addresses[this->totalItems].addr = 0x22;
+  this->addresses[this->totalItems++].multiplier = 100;
+
 }
 
 
@@ -65,6 +91,7 @@ void Modbus::broadcastItemState(int itm){
       long long int mls = millis();
     #endif
     modbusResult = node.readHoldingRegisters(this->addresses[itm].addr, 8);
+    Serial1.flush();
     if(modbusResult  == node.ku8MBSuccess)
       this->firstAddrBuffered = this->addresses[itm].addr;
     #ifdef DEBUG_3
@@ -79,7 +106,7 @@ void Modbus::broadcastItemState(int itm){
       sprintf(tmp, "Broadcast addr: %d value: %d ", this->addresses[itm].addr, val);
       Serial.println(tmp);
     #endif
-    stm->broadcastInputChange(this->addresses[itm].addr, val, Can_message::Device::MODBU);
+    stm->broadcastInputChange((byte)this->addresses[itm].addr, val, Can_message::Device::MODBU);
   }else{
     #ifdef DEBUG_3
       char tmp[30];

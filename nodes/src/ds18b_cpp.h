@@ -82,6 +82,12 @@ void Ds18b::maintenance(Can_message::message* msg){
 };
 
 void Ds18b::refreshData(){
+    #ifdef DEBUG_2
+        char tmp[30];
+      sprintf(tmp, "DS18 refresh %d", this->nextDataRefresh);
+      Serial.println(tmp);
+      delay(10);
+    #endif
     sensors->requestTemperatures();  
 };
 
