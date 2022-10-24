@@ -14,7 +14,7 @@ Modbus::Modbus(STM32* stm):Device(stm){
   node.preTransmission(modbusPreTransmission);
   node.postTransmission(modbusPostTransmission);
   modbusResult = node.ku8MBResponseTimedOut;
-  this->broadcastDelay = 2000;
+  this->broadcastDelay = 2009;
   this->firstAddrBuffered = 0;
   this->totalItems = 0;
   this->addresses[this->totalItems].addr = 0x0E;
@@ -103,10 +103,10 @@ void Modbus::broadcastItemState(int itm){
     int val = (int)(toFloat(this->addresses[itm].addr-this->firstAddrBuffered)*this->addresses[itm].multiplier);
     #ifdef DEBUG_3
       char tmp[30];
-      sprintf(tmp, "Broadcast addr: %d value: %d ", this->addresses[itm].addr, val);
+      sprintf(tmp, "Broadcast idx: %d addr: %d value: %d ", itm, this->addresses[itm].addr, val);
       Serial.println(tmp);
     #endif
-    stm->broadcastInputChange((byte)this->addresses[itm].addr, val, Can_message::Device::MODBU);
+    stm->broadcastInputChange((byte)itm, val, Can_message::Device::MODBU);
   }else{
     #ifdef DEBUG_3
       char tmp[30];
