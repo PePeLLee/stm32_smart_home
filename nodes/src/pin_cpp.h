@@ -1,12 +1,55 @@
+#include "wirish_time.h"
 #include "series/stm32.h"
 #include "libmaple/gpio.h"
 #ifndef PIN_CPP_H
 #define PIN_CPP_H
 
-GPIO_Pins::GPIO_Pins(STM32* stm):Device(stm){
+void PinDevice::broadcastItemState(int itm){
+  stm->broadcastInputChange(itm, getVal(itm), this->devNo);
+}
+
+void PinDevice::setDimmer(byte pin, short oldV, short newV){
+  DEBUG_1L("Starting dimmer");
+  if(!isDimmable(pin)){
+    setHWVal(pin, setVal(pin, newV));
+    return;
+  }
+  for(int i=0;i<dimmCnt;i++)
+    if(dimms[i].pin == pin) return;
+  dimms[dimmCnt].pin = pin;
+  dimms[dimmCnt].dimmSince = millis();
+  dimms[dimmCnt].destVal = (newV>pwmFull())?pwmFull():newV;
+  dimms[dimmCnt].initVal = oldV;
+  dimmCnt++;
+}
+
+#define DIMM_TIME 1000
+void PinDevice::handleDimmers(){
+  if(dimmCnt == 0) return;
+  DEBUG_1L("Dimmer handler");
+  //finish dimming
+  for(int i = dimmCnt-1 ; i>=0; i--){
+    if(millis()>=dimms[i].dimmSince+DIMM_TIME){
+      setHWVal(dimms[i].pin, setVal(dimms[i].pin, dimms[i].destVal, Can_message::ValType::T_PWM), Can_message::ValType::T_PWM);
+      nextBroadcast = 0;
+      nextBroadcastItm = dimms[i].pin;
+      dimmCnt--;
+    }else{
+      break;
+    }
+  }
+  int tPassed;
+  for(int i = 0 ; i<dimmCnt; i++){
+    tPassed = millis()-dimms[i].dimmSince;
+    tPassed = (tPassed>DIMM_TIME)?DIMM_TIME:tPassed;    
+    setHWVal(dimms[i].pin,dimms[i].initVal+(dimms[i].destVal-dimms[i].initVal)*tPassed/DIMM_TIME,Can_message::ValType::T_PWM);
+  }
+}
+
+GPIO_Pins::GPIO_Pins(STM32* stm):PinDevice(stm){
   sprintf(devDesc, "GPIO");
   
-  broadcastDelay = 2000;
+  broadcastDelay = 500;
   totalItems = PC15+1;
   
   for(int i=0; i<=totalItems; i++){
@@ -24,114 +67,31 @@ GPIO_Pins::GPIO_Pins(STM32* stm):Device(stm){
   }
 }
 
-void GPIO_Pins::broadcastItemState(int itm){
-    stm->broadcastInputChange(itm, pins[itm].lastVal, this->devNo);
-};
 bool GPIO_Pins::isItemValidBcast(int itm){
   return (pins[itm].reserved == false && 
           pins[itm].initialized == true &&
           Device::isItemValidBcast(itm));
 };
-void GPIO_Pins::loop(){
-  for ( int i=0; i<= PC15; i++){
-		if(pins[i].reserved == true) continue;
-		checkInput(i);
-	}
-  Device::loop();
+
+bool GPIO_Pins::isItemValidInput(int itm) {
+  return ( this->isItemValidBcast(itm) && (pins[itm].in_out != OUTPUT));
 };
     
-void GPIO_Pins::maintenance(Can_message::message* msg){};
-void GPIO_Pins::canCommand(Can_message::message* msg){
-  #ifdef DEBUG_1
-    char tmp[30];
-    sprintf(tmp, "Pin command: %5d ", msg->pin);
-    Serial.println(tmp);
-    delay(10);
-  #endif
-  if(pins[msg->pin].reserved == true){
-    #ifdef DEBUG_1
-      Serial.println("Pin reserved");
-    #endif
-    return;
+bool GPIO_Pins::isItemValidCommand(int itm){
+  DEBUG_1V("Pin command: ");DEBUG_1L(itm);
+  if(pins[itm].reserved == true){    
+    DEBUG_1L("Pin reserved");
+    return false;
   }
-  if(pins[msg->pin].initialized==false || pins[msg->pin].in_out == INPUT){
-    #ifdef DEBUG_1
-      Serial.println("Initializing PIN");
-    #endif  
-    pinMode(msg->pin, OUTPUT);
-    pins[msg->pin].initialized=true;
-    pins[msg->pin].in_out = OUTPUT;
-    pins[msg->pin].lastVal = -1;
+  if(pins[itm].initialized==false || pins[itm].in_out == INPUT){
+    DEBUG_1L("Initializing PIN");
+    pinMode(itm, OUTPUT);
+    pins[itm].initialized=true;
+    pins[itm].in_out = OUTPUT;
+    pins[itm].lastVal = -1;
   }
-  short newVal = *(short*)msg->val;
-  if(pins[msg->pin].lastVal != newVal){
-    #ifdef DEBUG_1
-      char tmp[30];
-      sprintf(tmp, "Changing value type: %5d ", msg->type);
-      Serial.println(tmp);
-      delay(10);
-    #endif
-    pins[msg->pin].lastVal = newVal;
-    if(msg->valType == Can_message::ValType::T_PWM){
-        #ifdef DEBUG_1  
-          Serial.println("....................Analog................");
-        #endif
-          analogWrite(msg->pin, newVal);
-       }else{
-          digitalWrite(msg->pin, newVal);
-          #ifdef DEBUG_1  
-            Serial.println(msg->pin);
-          #endif
-       }
-  }else{
-    #ifdef DEBUG_1
-      char tmp[30];
-      sprintf(tmp, "Old Val: %5d New Val: %5d", pins[msg->pin].lastVal, newVal);
-      Serial.println(tmp);
-      delay(10);
-    #endif
-  }
-}
+  return true;
+};
 
-// char* Pin::toString(){
-//   sprintf(tmp,"%s %d %d %d", devDesc, this->gpio_no, this->lastVal, this->devNo);
-//   return tmp;  
-// }
-
-
-void GPIO_Pins::checkInput(int gpio_no){
-  int currRead;
-  if(!this->isItemValidBcast(gpio_no))return;
-  if(pins[gpio_no].in_out != INPUT) return;
-
-  currRead = digitalRead(gpio_no);  
-  if (millis() - pins[gpio_no].valSince > 5000){
-    pins[gpio_no].valSince = 0;
-  }
-  if( currRead != pins[gpio_no].lastVal ){
-    if((pins[gpio_no].valSince != 0) && (millis() - pins[gpio_no].valSince > 50)){
-    #ifdef DEBUG_1
-      char tmp[50];
-      sprintf(tmp, "Push button %d Old Val: %5d New Val: %5d", gpio_no, pins[gpio_no].lastVal, currRead);
-      Serial.println(tmp);
-      delay(10);
-    #endif 
-
-      pins[gpio_no].lastVal = currRead;
-      pins[gpio_no].valSince = 0;
-      nextBroadcastItm = gpio_no;
-      nextBroadcast = 0;
-    #ifdef DEBUG_1
-      // char tmp[30];
-      sprintf(tmp, "Set button end");
-      Serial.println(tmp);
-      delay(10);
-    #endif 
-
-    }else if(pins[gpio_no].valSince == 0){ 
-      pins[gpio_no].valSince = millis();
-    } 
-  } 
-}
 
 #endif

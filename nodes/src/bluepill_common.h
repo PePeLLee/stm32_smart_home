@@ -2,16 +2,8 @@
 #define BLUEPILL_COMMON
 
 
-#if defined(MCP24_IN) || defined(MCP20_OUT)
+#if defined(MCP24_IN) || defined(MCP20_OUT) || defined(PCA1)
 	#define I2C
-	#include <Wire.h>
-	#include <Adafruit_MCP23017.h>
-#endif
-
-#ifdef PCA1
-	#define I2C
-	#include <Wire.h>
-	#include <Adafruit_PWMServoDriver.h>
 #endif
 
 #ifdef COLOR_LED
@@ -53,7 +45,8 @@ class Can_message{
 	enum ValType{
 		T_INT = 0,
 		T_FLOAT = 1,
-		T_PWM = 2
+		T_PWM = 2,
+    T_DIMM = 3
 	};
 	
 	struct message{
@@ -82,8 +75,9 @@ class Device{
     unsigned long long nextBroadcast = 0;
     byte nextBroadcastItm = 0;
     unsigned long long nextDataRefresh = 0;
-    long broadcastDelay = 10000;
+    long broadcastDelay = 1000;
     long refreshDelay = 10000;
+    long longBroadcastDelay = 30000;
     byte totalItems = 1;
     byte devNo = 0;
     virtual void broadcastItemState(int) =0;
@@ -99,6 +93,7 @@ class Device{
     }
     virtual void canCommand(Can_message::message* msg) = 0;
     void loop(){
+      byte prev_itm = this->nextBroadcastItm;
       if(millis()>this->nextDataRefresh){
         refreshData();
         this->nextDataRefresh = millis() + this->refreshDelay;
@@ -117,6 +112,9 @@ class Device{
           //no check if any item is valid for boradcast!
           this->nextBroadcastItm = (this->nextBroadcastItm + 1) % (this->totalItems + 1);
         }while(!isItemValidBcast(this->nextBroadcastItm));
+        if (this->nextBroadcastItm<prev_itm) {
+          this->nextBroadcast = millis() + longBroadcastDelay;
+        }
       }
     };
 
@@ -244,7 +242,7 @@ void Can_message::print(message* msg){
     case T_PWM: Serial.print("Analog");break;
     default: Serial.print(msg->valType);break;
   };
-	Serial.print("Value: "); Serial.print(*(short*)msg->val);
+	Serial.print(" Value: "); Serial.print(*(short*)msg->val);
 	 
 	Serial.println();
 };
@@ -282,8 +280,7 @@ void Can_message::command(message* msg){
   #ifdef PCA2
     case PCA01:
   #endif 
-      val = ( msg->val[0] << 8 ) + msg->val[1];
-      this->stm->pca_exts[msg->device - PCA00]->command(msg->pin, msg->valType, val);
+      this->stm->pca_exts[msg->device - PCA00]->canCommand(msg);
       break;
 #endif
     case STM00:
