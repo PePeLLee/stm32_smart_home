@@ -1,4 +1,5 @@
 Can message structure:
+
 	struct message{
 		byte	msgId;
 		
@@ -15,6 +16,7 @@ Example message
 "canStatus/devId/msgId/ver/from_node/msgType/device/pin/valType"
 
 Message Types: 
+
 	WELCOME = 0,
 	STATUS  = 1,
 	COMMAND = 2,
@@ -22,12 +24,14 @@ Message Types:
     MAINT   = 4,
     
 Value Types:
+
 	T_INT = 0,
 	T_FLOAT = 1,
 	T_PWM = 2,
     T_DIMM = 3
 
 Devices numbers:
+
     STM00 = 0,
 	MCP20 = 1, //"canCommand/26/0/0/2/2/1/10/0" -m '0'
 	MCP21 = 2,
