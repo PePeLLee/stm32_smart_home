@@ -33,13 +33,7 @@ class PcfExtender:public PinDevice{
     inline int getVal(int itm){    //DEBUG_7V("Push check time ");DEBUG_7V(itm);DEBUG_7V(" Old Val: ");DEBUG_7V(pins[itm].lastVal); 
       return pins[itm].lastVal; };
     inline int setVal(int itm, int val, byte valType = Can_message::ValType::T_INT){ pins[itm].lastVal = (val==0)?LOW:HIGH; return pins[itm].lastVal; };
-    inline int getHWVal(int itm){ //DEBUG_7V(" New Val: ");DEBUG_7L((allButtons&(1UL<<itm))!=0); 
-      return (allButtons&(1UL<<itm))!=0; };
-    // int getHWVal(int itm){ 
-    //   DEBUG_1L("Pre digital read");
-    //   byte a = mcp.digitalRead(itm);
-    //   DEBUG_1L("Post digital read");
-    //   return a; };
+    inline int getHWVal(int itm){ return (allButtons&(1UL<<itm))!=0; };
     void setHWVal(int itm, int val, byte valType = Can_message::ValType::T_INT){ /*mcp.digitalWrite(itm, (val==0)?LOW:HIGH);*/ };
     inline unsigned long long getValSince(int itm){ return pins[itm].valSince; };
     inline void setValSince(int itm){ pins[itm].valSince = millis(); verInputTime = pins[itm].valSince + 50;};
@@ -55,7 +49,8 @@ class PcfExtender:public PinDevice{
         DEBUG_7L("Sate changed"); 
         return true; 
       } else 
-        return false; };
+        return false; 
+    };
     void refreshData(){ allButtons = pcf8575->digitalReadAll(); };
 
 	public:
@@ -67,6 +62,7 @@ class PcfExtender:public PinDevice{
       pcf8575->begin();     
       this->seq = seq;
       totalItems = 16;
+      flips = new short[totalItems];
       #ifdef DEBUG_7
         delay(1000);
       #endif

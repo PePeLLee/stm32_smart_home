@@ -1,3 +1,4 @@
+#include "libmaple/util.h"
 #include "wirish_time.h"
 #include "series/stm32.h"
 #include "libmaple/gpio.h"
@@ -22,6 +23,20 @@ void PinDevice::setDimmer(byte pin, short oldV, short newV){
   dimms[dimmCnt].initVal = oldV;
   dimmCnt++;
 }
+
+void PinDevice::handleFlips(){
+  if(millis()> this->nextFlipsBCast){
+    
+    DEBUG_1V("Flips handler device ");
+    DEBUG_1L(this->devNo);
+    for(int itm = 0; itm< this->totalItems; itm++){
+      if(flips[itm]!=0)
+        stm->broadcastStats(itm, flips[itm], this->devNo);
+      flips[itm]=0;
+    }
+    this->nextFlipsBCast  = millis() + 10000;
+  }
+ }
 
 #define DIMM_TIME 1000
 void PinDevice::handleDimmers(){
@@ -51,7 +66,7 @@ GPIO_Pins::GPIO_Pins(STM32* stm):PinDevice(stm){
   
   broadcastDelay = 500;
   totalItems = PC15+1;
-  
+  flips = new short[totalItems];
   for(int i=0; i<=totalItems; i++){
     this->pins[i].reserved = true;
     this->pins[i].initialized = false;

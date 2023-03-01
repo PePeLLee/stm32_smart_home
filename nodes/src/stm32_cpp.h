@@ -34,6 +34,19 @@ void STM32::setup(mcp2515_can* CAN0){
 #ifdef MODBUS
   modbus = new Modbus(this);
 #endif
+#ifdef PCF1
+  pcf_exts[0] = new PcfExtender(this);
+  no_pcf_ext = 1;
+#endif
+#ifdef PCF2
+  pcf_exts[1] = new PcfExtender(this, 1);
+  no_pcf_ext = 2;
+#endif
+#ifdef PCF3
+  pcf_exts[2] = new PcfExtender(this, 2);
+  no_pcf_ext = 3;
+#endif
+
   pins = new GPIO_Pins(this);
 
 	
@@ -63,12 +76,19 @@ void STM32::loop(){
   this->checkBlink();
 #ifdef MCP20_OUT
 	for(int i=0; i<no_mcp_exts_out; i++) mcp_exts_out[i]->loop();//updatePins();
+	can->checkMessage();
 #endif
 #ifdef MCP24_IN
   for(int i=0; i<no_mcp_exts_in; i++) mcp_exts_in[i]->loop();//loop_in();
+	can->checkMessage();
 #endif
 #ifdef PCA1
   for(int i=0; i<no_pca_ext; i++) pca_exts[i]->loop();
+	can->checkMessage();
+#endif
+#ifdef PCF1
+  for(int i=0; i<no_pcf_ext; i++) pcf_exts[i]->loop();
+	can->checkMessage();
 #endif
 #ifdef SERIAL_INPUT
 	ser.loop(this);
@@ -93,13 +113,17 @@ void STM32::broadcastInputChange(int pin, int val, int dev){
 			this->blink = millis();
 #ifdef DEBUG_1
       char tmp[30];
-      sprintf(tmp, "P: %5d V: %5d D: %2d", pin, val, dev);
+      sprintf(tmp, "Dev: %5d Pin: %5d V: %2d",dev, pin, val);
 	    Serial.println(tmp);
       delay(10);
 #endif
 			can->sendInputState(pin, val, 0,dev);
 };
 
+void STM32::broadcastStats(int pin, int val, int dev){
+  
+			can->sendInputState(pin, val, Can_message::ValType::T_FLIPS,dev);
+};
 #ifdef RF_RECEIVE
 void STM32::broadcastRfButton(int id){
   this->blink = millis();

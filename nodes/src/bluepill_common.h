@@ -2,7 +2,7 @@
 #define BLUEPILL_COMMON
 
 
-#if defined(MCP24_IN) || defined(MCP20_OUT) || defined(PCA1)
+#if defined(MCP24_IN) || defined(MCP20_OUT) || defined(PCA1)|| defined(PCF)
 	#define I2C
 #endif
 
@@ -36,6 +36,9 @@ class Can_message{
     STM00 = 0,
 		MCP20 = 1,
 		MCP21 = 2,
+    PCF24 = 7,
+    PCF25 = 8,
+    PCF26 = 9,
     DS18B = 10,
     MODBU = 11,
     PCA00 = 12,
@@ -46,7 +49,8 @@ class Can_message{
 		T_INT = 0,
 		T_FLOAT = 1,
 		T_PWM = 2,
-    T_DIMM = 3
+    T_DIMM = 3,
+    T_FLIPS = 4
 	};
 	
 	struct message{
@@ -133,6 +137,9 @@ class Device{
 #ifdef PCA1
 #include "pca_h.h"
 #endif
+#ifdef PCF1
+#include "pcf_h.h"
+#endif
 #ifdef DS18
   #include "ds18b_h.h"
 #endif
@@ -156,6 +163,10 @@ class STM32{
 		int no_pca_ext;
 		PcaExtender * pca_exts[4];
 #endif
+#ifdef PCF1
+		int no_pcf_ext;
+		PcfExtender * pcf_exts[4];
+#endif
 #ifdef RF_RECEIVE
     RF_receiver *rf_rec;
 #endif
@@ -174,12 +185,14 @@ class STM32{
 		void loop();
 		void checkInputs();
 		void broadcastInputChange(int pin, int val, int device = 0);
+		void broadcastStats(int pin, int val, int device = 0);
 		void checkBlink();
     void reboot();
     void maintenance(Can_message::message* msg);
     #ifdef RF_RECEIVE
     void broadcastRfButton(int id);
     void broadcastClimate(byte mac, int type, short val);
+    
     #endif
 };
 
@@ -281,6 +294,17 @@ void Can_message::command(message* msg){
     case PCA01:
   #endif 
       this->stm->pca_exts[msg->device - PCA00]->canCommand(msg);
+      break;
+#endif
+#ifdef PCF1
+    case PCF24:
+  #ifdef PCF2
+    case PCF25:
+  #endif 
+  #ifdef PCF3
+    case PCF26:
+  #endif 
+      this->stm->pcf_exts[msg->device - PCF24]->canCommand(msg);
       break;
 #endif
     case STM00:

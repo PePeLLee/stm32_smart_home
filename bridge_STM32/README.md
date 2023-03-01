@@ -29,11 +29,11 @@ Value Types:
 
 Devices numbers:
     STM00 = 0,
-	MCP20 = 1,
+	MCP20 = 1, //"canCommand/26/0/0/2/2/1/10/0" -m '0'
 	MCP21 = 2,
     DS18B = 10,
     MODBU = 11,
-    PCA00 = 12,
+    PCA00 = 12, //"canCommand/26/0/0/2/2/12/15/3" -m '2000'
     PCA01 = 13,
 	
 put Low on MCP0 (0x20) device pin 10:

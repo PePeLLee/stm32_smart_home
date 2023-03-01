@@ -41,7 +41,7 @@ class PinDevice: public Device{
       long long dimmSince;
       short destVal;
       short initVal;
-    }dimms[6];
+    }dimms[10];
     byte dimmCnt = 0;
     virtual inline short pwmFull(){ return 255; };
     virtual inline void broadcastItemState(int);
@@ -59,6 +59,9 @@ class PinDevice: public Device{
     virtual inline bool isDimmable(int itm){return true;};
     virtual void setDimmer(byte, short, short);
     virtual void handleDimmers();
+    short *flips;
+    long long int nextFlipsBCast = 0;
+    void handleFlips();
   public:
     PinDevice(STM32* stm):Device(stm){};
     void loop(){
@@ -66,6 +69,8 @@ class PinDevice: public Device{
         for ( int i=0; i<this->totalItems; i++)
           if(isItemValidInput(i))
             checkInput(i);
+        
+        handleFlips();
       }
       handleDimmers();
       Device::loop();
@@ -109,6 +114,7 @@ class PinDevice: public Device{
           DEBUG_1L("Set button end");
         }else if(getValSince(gpio_no) == 0) 
           setValSince(gpio_no); 
+          flips[gpio_no]++;
       } 
     };  
 }; 

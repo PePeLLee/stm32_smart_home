@@ -24,7 +24,7 @@ void Can_communication::sendInputState(int pin, int val, int attNo, int device){
 	outMsg->type = Can_message::MsgType::STATUS;
 	outMsg->pin = pin;
 	outMsg->device = device;
-	outMsg->valType = 0;
+	outMsg->valType = attNo;
 	// outMsg->val[1] = val;  
   *(short*)outMsg->val = (short)val; 
 	can->sendMsgBuf(DEV_ID, 0, 8, canBuff);
@@ -69,7 +69,7 @@ void Can_communication::sendClimate(byte mac, int type, short val){
 	
 void Can_communication::checkMessage(){
 	char msgString[128];  
-	while(initSucc && (CAN_MSGAVAIL == can->checkReceive())){
+  if(initSucc && (CAN_MSGAVAIL == can->checkReceive())){
 //		Serial.println("Any message spotted");
     // Serial.print(".");
 		can->readMsgBuf(&len, rxBuf);      // Read data: len = data

@@ -11,7 +11,8 @@
 #endif
 
 // #include <DFRobot_MCP23017.h>
-#include "Adafruit_MCP23017.h"
+// #include "Adafruit_MCP23017.h"
+#include <MCP23017.h>
 
 // class McpPin: public Pin{
 // 	Adafruit_MCP23017* mcp;	
@@ -44,7 +45,9 @@
 class McpExtender:public PinDevice{
   protected:
     // DFRobot_MCP23017 *mcp;//(Wire, /*addr =*/0x27);
-		Adafruit_MCP23017 mcp;
+		// Adafruit_MCP23017 mcp;
+    MCP23017 *mcp;
+    uint8_t bitsA, bitsB;
 		int seq;
     int in_out;
 	  // int currRead;
@@ -55,22 +58,36 @@ class McpExtender:public PinDevice{
       unsigned long long valSince;
     };
     single_pin  pins[16];
+    uint16_t allButtons, oldButtons;
+
     bool isItemValidInput(int){return in_out != OUTPUT;};
     bool isItemValidCommand(int itm){ return in_out == OUTPUT;};
     inline bool isDimmable(int itm){return false;};
     inline int getVal(int itm){ return pins[itm].lastVal; };
-    inline int setVal(int itm, int val, byte valType = Can_message::ValType::T_INT){ pins[itm].lastVal = (val==0)?LOW:HIGH; return pins[itm].lastVal; };
-    inline int getHWVal(int itm){ return mcp.digitalRead(itm); };
-    // int getHWVal(int itm){ 
-    //   DEBUG_1L("Pre digital read");
-    //   byte a = mcp.digitalRead(itm);
-    //   DEBUG_1L("Post digital read");
-    //   return a; };
-    void setHWVal(int itm, int val, byte valType = Can_message::ValType::T_INT){ mcp.digitalWrite(itm, (val==0)?LOW:HIGH); };
+    inline int setVal(int itm, int val, byte valType = Can_message::ValType::T_INT){ pins[itm].lastVal = (val==0)?LOW:HIGH;  return pins[itm].lastVal; };
+    // inline int getHWVal(int itm){ DEBUG_1L("HW Read");return 0; };// mcp.digitalRead(itm); };
+    inline int getHWVal(int itm){ return (allButtons&(1UL<<itm))!=0; };
+    void setHWVal(int itm, int val, byte valType = Can_message::ValType::T_INT){ 
+      if(itm>7){
+        if(val==0)
+          bitsB &= ~(1<<(itm%8));
+        else
+          bitsB |= 1<<(itm%8);
+        
+        mcp->writePort(MCP23017Port::B, bitsB);
+      }else{
+        if(val==0)
+          bitsA &= ~(1<<(itm%8));
+        else
+          bitsA |= 1<<(itm%8);
+        mcp->writePort(MCP23017Port::A, bitsA);
+      } 
+    };
     inline unsigned long long getValSince(int itm){ return pins[itm].valSince; };
-    inline void setValSince(int itm){ pins[itm].valSince = millis(); verInputTime = pins[itm].valSince + 50;};
-    inline void clearValSince(int itm){ pins[itm].valSince = 0; };
+    inline void setValSince(int itm){ pins[itm].valSince = millis(); verInputTime++;};
+    inline void clearValSince(int itm){ pins[itm].valSince = 0; verInputTime--;};
     bool inputAvailable();
+    void refreshData(){ allButtons = mcp->read(); };
 
 	public:
 		McpExtender(STM32* stm, int seq = 0);
